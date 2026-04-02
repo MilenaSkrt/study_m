@@ -30,3 +30,36 @@ def delete_role(role_id: int, db: Session = Depends(get_db), current_user: User 
     db.delete(role)
     db.commit()
     return {"detail": "Role deleted"}
+
+# ---------------- GROUPS ----------------
+@app.post("/groups/", response_model=GroupRead)
+def create_group(group: GroupCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    new_group = Group(**group.dict())
+    db.add(new_group)
+    db.commit()
+    db.refresh(new_group)
+    return new_group
+
+@app.get("/groups/", response_model=List[GroupRead])
+def get_groups(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    return db.query(Group).all()
+
+@app.get("/groups/{group_id}", response_model=GroupRead)
+def get_group(group_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    return get_object_or_404(db, Group, group_id, "Group not found")
+
+@app.put("/groups/{group_id}", response_model=GroupRead)
+def update_group(group_id: int, group_update: GroupUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    group = get_object_or_404(db, Group, group_id, "Group not found")
+    for key, value in group_update.dict(exclude_unset=True).items():
+        setattr(group, key, value)
+    db.commit()
+    db.refresh(group)
+    return group
+
+@app.delete("/groups/{group_id}")
+def delete_group(group_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    group = get_object_or_404(db, Group, group_id, "Group not found")
+    db.delete(group)
+    db.commit()
+    return {"detail": "Group deleted"}
