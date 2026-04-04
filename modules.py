@@ -1,36 +1,65 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from database import get_db
-from models import Module, User
-from pydantic import BaseModel
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime
+from sqlalchemy.orm import relationship
+from database import Base
+import datetime
 
-router = APIRouter(prefix="/modules", tags=["modules"])
 
-# Pydantic модели
-class ModuleCreate(BaseModel):
-    title: str
-    description: str
-    teacher_id: int  # ID преподавателя
+class Role(Base):
+    __tablename__ = "roles"
 
-# Создать модуль
-@router.post("/")
-def create_module(module: ModuleCreate, db: Session = Depends(get_db)):
-    teacher = db.query(User).filter(User.id == module.teacher_id).first()
-    if not teacher:
-        raise HTTPException(status_code=404, detail="Преподаватель не найден")
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String)
 
-    new_module = Module(
-        title=module.title,
-        description=module.description,
-        teacher_id=module.teacher_id
-    )
-    db.add(new_module)
-    db.commit()
-    db.refresh(new_module)
-    return {"message": "Модуль создан", "module_id": new_module.id}
 
-# Получить все модули
-@router.get("/")
-def get_modules(db: Session = Depends(get_db)):
-    modules = db.query(Module).all()
-    return modules
+class Group(Base):
+    __tablename__ = "groups"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String)
+    description = Column(Text)
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    full_name = Column(String)
+    email = Column(String, unique=True)
+    password = Column(String)
+    role_id = Column(Integer, ForeignKey("roles.id"))
+    group_id = Column(Integer, ForeignKey("groups.id"))
+    status = Column(String)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    role = relationship("Role")
+    group = relationship("Group")
+
+
+class Module(Base):
+    __tablename__ = "modules"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String)
+    description = Column(Text)
+    teacher_id = Column(Integer, ForeignKey("users.id"))
+
+
+class Task(Base):
+    __tablename__ = "tasks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String)
+    description = Column(Text)
+    max_score = Column(Integer)
+    module_id = Column(Integer, ForeignKey("modules.id"))
+
+
+class Submission(Base):
+    __tablename__ = "submissions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    task_id = Column(Integer, ForeignKey("tasks.id"))
+    user_id = Column(Integer, ForeignKey("users.id"))  # добавили сюда
+    content = Column(Text)
+    grade = Column(Integer)
+    comment = Column(Text)
